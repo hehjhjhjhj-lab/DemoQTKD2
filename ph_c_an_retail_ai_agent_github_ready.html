@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phúc An AI Agent - Hệ thống Phân tích Hiệu quả Chuỗi Cửa hàng</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-slate-900 text-white shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:h-16 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="flex items-center space-x-3 w-full sm:w-auto">
+                <div class="bg-indigo-600 p-2 rounded-lg shrink-0">
+                    <i class="fa-solid fa-robot text-xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base sm:text-lg tracking-tight">PHÚC AN RETAIL AI AGENT</h1>
+                    <div class="flex items-center space-x-2 text-xs text-slate-400">
+                        <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span>AI301 - Đề 07 • Modular Agentic Pipeline</span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2 w-full sm:w-auto justify-end">
+                <button onclick="downloadSampleCSV()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-medium px-3 py-2 rounded-lg transition flex items-center space-x-1.5" title="Tải file CSV mẫu để test chức năng Upload">
+                    <i class="fa-solid fa-download"></i>
+                    <span class="hidden md:inline">Tải CSV Mẫu</span>
+                </button>
+                <button onclick="generateAndRunMockData()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-medium px-4 py-2 rounded-lg shadow transition flex items-center space-x-2">
+                    <i class="fa-solid fa-bolt"></i>
+                    <span>Nạp 60.000 Dòng & Chạy Agent</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Control & Configuration Bar -->
+        <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Kỳ báo cáo hiện tại</label>
+                    <select id="reportPeriod" class="w-full rounded-lg border-slate-300 border p-2.5 text-sm font-medium bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <option value="2026-10">Tháng 10/2026 (Kỳ chuẩn)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Kỳ so sánh (Apples-to-Apples)</label>
+                    <select id="comparePeriod" onchange="recalculateWithNewPeriod()" class="w-full rounded-lg border-slate-300 border p-2.5 text-sm font-medium bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <option value="2026-09">Tháng 09/2026 (Cùng số ngày - Chuẩn)</option>
+                        <option value="2026-08">Tháng 08/2026 (Nền thấp - Dễ gây ảo giác)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Tải lên dữ liệu thực tế (CSV)</label>
+                    <label class="w-full flex items-center justify-center px-4 py-2.5 border border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50 transition text-sm text-slate-600 overflow-hidden">
+                        <i class="fa-solid fa-file-csv mr-2 text-indigo-600 shrink-0"></i>
+                        <span id="fileNameLabel" class="truncate">Chọn file giao dịch (.csv)...</span>
+                        <input type="file" id="csvUpload" accept=".csv" class="hidden" onchange="handleFileUpload(event)">
+                    </label>
+                </div>
+                <div>
+                    <button onclick="exportCleanReport()" id="exportBtn" disabled class="w-full bg-emerald-600 disabled:bg-slate-300 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-2.5 rounded-lg shadow transition flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-file-export"></i>
+                        <span>Xuất Báo Cáo Đối Soát (CSV)</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Agent Execution Pipeline Status -->
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Agent 1 -->
+            <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm transition-all">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md">Agent 1: Data Cleaning</span>
+                    <span id="agent1Status" class="text-xs font-medium text-slate-400">Chờ dữ liệu...</span>
+                </div>
+                <h3 class="font-semibold text-slate-800 text-sm mb-2">Khử trùng lặp & Lọc đơn hủy</h3>
+                <ul id="agent1Logs" class="text-xs text-slate-600 space-y-1.5 bg-slate-50 p-3 rounded-lg min-h-[85px]">
+                    <li class="text-slate-400 italic">Nhấn "Nạp 60.000 Dòng & Chạy Agent" để bắt đầu...</li>
+                </ul>
+            </div>
+
+            <!-- Agent 2 -->
+            <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm transition-all">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2.5 py-1 rounded-md">Agent 2: Financial Engine</span>
+                    <span id="agent2Status" class="text-xs font-medium text-slate-400">Chờ dữ liệu...</span>
+                </div>
+                <h3 class="font-semibold text-slate-800 text-sm mb-2">Chuẩn hóa kỳ & Tính Lãi gộp</h3>
+                <ul id="agent2Logs" class="text-xs text-slate-600 space-y-1.5 bg-slate-50 p-3 rounded-lg min-h-[85px]">
+                    <li class="text-slate-400 italic">Tự động đồng bộ quy tắc tính hàng đổi trả (-1x) trên 18 cửa hàng.</li>
+                </ul>
+            </div>
+
+            <!-- Agent 3 -->
+            <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm transition-all">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-purple-600 bg-purple-50 px-2.5 py-1 rounded-md">Agent 3: BI & Advisory</span>
+                    <span id="agent3Status" class="text-xs font-medium text-slate-400">Chờ dữ liệu...</span>
+                </div>
+                <h3 class="font-semibold text-slate-800 text-sm mb-2">Phân tích cơ cấu & Đề xuất hỗ trợ</h3>
+                <ul id="agent3Logs" class="text-xs text-slate-600 space-y-1.5 bg-slate-50 p-3 rounded-lg min-h-[85px]">
+                    <li class="text-slate-400 italic">Đánh giá đa chiều: Mục tiêu + Biên lãi gộp + Tỷ lệ trả hàng.</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Human-in-the-Loop Alert Banner -->
+        <div id="hitlAlertContainer" class="hidden space-y-3">
+            <!-- Alert 1: Missing Cost Data -->
+            <div id="hitlCostAlert" class="hidden bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="flex items-start space-x-3">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-500 text-xl mt-0.5"></i>
+                    <div>
+                        <h4 class="text-sm font-bold text-amber-900">ĐIỂM KIỂM SOÁT CON NGƯỜI #1 (Human-in-the-Loop): Thiếu dữ liệu Giá vốn</h4>
+                        <p id="hitlCostText" class="text-xs text-amber-800 mt-1"></p>
+                    </div>
+                </div>
+                <button onclick="resolveMissingCost()" class="shrink-0 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-4 py-2 rounded-lg shadow transition">
+                    <i class="fa-solid fa-check mr-1"></i> Xác nhận & Cập nhật giá vốn chuẩn
+                </button>
+            </div>
+
+            <!-- Alert 2: Anomaly Detection (>30% Growth Swing) -->
+            <div id="hitlAnomalyAlert" class="hidden bg-rose-50 border-l-4 border-rose-500 p-4 rounded-r-xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="flex items-start space-x-3">
+                    <i class="fa-solid fa-magnifying-glass-chart text-rose-500 text-xl mt-0.5"></i>
+                    <div>
+                        <h4 class="text-sm font-bold text-rose-900">ĐIỂM KIỂM SOÁT CON NGƯỜI #2: Phát hiện biến động bất thường (&gt;30%)</h4>
+                        <p id="hitlAnomalyText" class="text-xs text-rose-800 mt-1"></p>
+                    </div>
+                </div>
+                <span class="shrink-0 text-xs font-semibold bg-rose-100 text-rose-800 px-3 py-1.5 rounded-lg">
+                    Cần Giám đốc xác minh thực địa
+                </span>
+            </div>
+        </div>
+
+        <!-- Executive Summary KPI Cards -->
+        <section id="kpiSummarySection" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <p class="text-xs font-semibold text-slate-400 uppercase">Tổng Doanh Thu Thuần (18 CH)</p>
+                <p id="kpiTotalRev" class="text-2xl font-bold text-slate-800 mt-1">0 ₫</p>
+                <p class="text-xs text-slate-500 mt-2">Đã trừ đơn hủy &amp; hàng đổi trả</p>
+            </div>
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <p class="text-xs font-semibold text-slate-400 uppercase">Tổng Lợi Nhuận Gộp</p>
+                <p id="kpiTotalGP" class="text-2xl font-bold text-emerald-600 mt-1">0 ₫</p>
+                <p id="kpiAvgMargin" class="text-xs text-slate-500 mt-2">Biên lãi gộp trung bình: 0%</p>
+            </div>
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <p class="text-xs font-semibold text-slate-400 uppercase">Tỷ lệ Hoàn Thành Mục Tiêu</p>
+                <p id="kpiTargetPct" class="text-2xl font-bold text-indigo-600 mt-1">0%</p>
+                <p id="kpiStoresBelowTarget" class="text-xs text-slate-500 mt-2">0/18 cửa hàng chưa đạt KPI</p>
+            </div>
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <p class="text-xs font-semibold text-slate-400 uppercase">Tổng Giá Trị Hàng Đổi Trả</p>
+                <p id="kpiTotalReturn" class="text-2xl font-bold text-rose-600 mt-1">0 ₫</p>
+                <p id="kpiReturnRate" class="text-xs text-slate-500 mt-2">Tỷ lệ trả hàng toàn chuỗi: 0%</p>
+            </div>
+        </section>
+
+        <!-- Main Workspace: AI Recommendations + 18 Stores Reconciliation Table -->
+        <div id="workspaceSection" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Left Column: AI Agent Advisory Report -->
+            <div class="lg:col-span-1 space-y-4">
+                <div class="bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-xl p-5 shadow-md">
+                    <div class="flex items-center space-x-2 mb-3">
+                        <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i>
+                        <h2 class="font-bold text-base">Đề Xuất Ưu Tiên Hỗ Trợ (AI Agent)</h2>
+                    </div>
+                    <p class="text-xs text-slate-300 mb-4 leading-relaxed">
+                        Hệ thống xếp hạng mức độ khẩn cấp dựa trên điểm số tổng hợp: <strong>Mức thiếu hụt KPI (40%)</strong> + <strong>Suy giảm biên lãi gộp (35%)</strong> + <strong>Tỷ lệ đổi trả bất thường (25%)</strong>.
+                    </p>
+                    <div id="aiRecommendationsList" class="space-y-3">
+                        <!-- Dynamic Priority Cards injected here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: 18 Stores Master Reconciliation Table -->
+            <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                <div class="p-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                        <h2 class="font-bold text-slate-800 text-base">Bảng Đối Soát Hiệu Quả 18 Cửa Hàng</h2>
+                        <p class="text-xs text-slate-500">Sắp xếp theo mức độ ưu tiên cần Giám đốc Kinh doanh hỗ trợ trước</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <input type="text" id="storeSearch" onkeyup="filterStoreTable()" placeholder="Tìm mã/tên cửa hàng..." class="text-xs border border-slate-300 rounded-lg px-3 py-1.5 outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto flex-grow">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase">
+                                <th class="py-3 px-3">Ưu tiên</th>
+                                <th class="py-3 px-3">Cửa hàng</th>
+                                <th class="py-3 px-3 text-right">Doanh thu thuần</th>
+                                <th class="py-3 px-3 text-right">Đạt KPI</th>
+                                <th class="py-3 px-3 text-right">Lãi gộp (%)</th>
+                                <th class="py-3 px-3 text-right">Đổi trả (%)</th>
+                                <th class="py-3 px-3 text-right">Tăng trưởng</th>
+                                <th class="py-3 px-3 text-center">Chi tiết</th>
+                            </tr>
+                        </thead>
+                        <tbody id="storesTableBody" class="divide-y divide-slate-100 text-xs">
+                            <!-- Rows injected dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 mt-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
+            <span>Hệ thống AI Agent Phân tích Kinh doanh Chuỗi Bán lẻ Phúc An (18 Cửa hàng)</span>
+            <span>Kiến trúc: Multi-Agent Pipeline &amp; Human-in-the-Loop</span>
+        </div>
+    </footer>
+
+    <!-- Store Detail Modal (Product Mix & Return Breakdown) -->
+    <div id="storeModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden">
+            <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
+                <div>
+                    <h3 id="modalStoreTitle" class="font-bold text-lg">Chi tiết Cửa hàng</h3>
+                    <p id="modalStoreSubtitle" class="text-xs text-slate-400">Phân tích cơ cấu sản phẩm &amp; nguyên nhân đổi trả</p>
+                </div>
+                <button onclick="closeStoreModal()" class="text-slate-400 hover:text-white transition p-2">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-5">
+                <div class="grid grid-cols-3 gap-3 text-center">
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <span class="text-[11px] text-slate-500 block">Doanh thu thuần</span>
+                        <span id="modalRev" class="font-bold text-sm text-slate-800">0 ₫</span>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <span class="text-[11px] text-slate-500 block">Lợi nhuận gộp</span>
+                        <span id="modalGP" class="font-bold text-sm text-emerald-600">0 ₫</span>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <span class="text-[11px] text-slate-500 block">Thiệt hại đổi trả</span>
+                        <span id="modalRet" class="font-bold text-sm text-rose-600">0 ₫</span>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="text-xs font-bold uppercase text-slate-500 mb-2">Cơ cấu nhóm hàng &amp; Biên lợi nhuận</h4>
+                    <div id="modalProductMix" class="space-y-2.5">
+                        <!-- Product mix bars -->
+                    </div>
+                </div>
+
+                <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
+                    <h4 class="text-xs font-bold text-indigo-900 flex items-center gap-1.5 mb-1">
+                        <i class="fa-solid fa-robot text-indigo-600"></i> Chẩn đoán của AI Agent:
+                    </h4>
+                    <p id="modalDiagnosis" class="text-xs text-indigo-800 leading-relaxed"></p>
+                </div>
+            </div>
+            <div class="bg-slate-50 px-6 py-3 border-t border-slate-200 flex justify-end">
+                <button onclick="closeStoreModal()" class="bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold px-4 py-2 rounded-lg">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white text-xs font-medium px-4 py-3 rounded-xl shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 z-50 flex items-center space-x-2">
+        <i class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span id="toastMsg">Thông báo</span>
+    </div>
+
+    <script>
+        // =========================================================================
+        // 1. MASTER DATA: DANH SÁCH 18 CỬA HÀNG & DANH MỤC SẢN PHẨM CHUẨN
+        // =========================================================================
+        const STORES = [
+            { id: 'CH01', name: 'Phúc An Hoàn Kiếm (HN)', region: 'Miền Bắc', target: 1850000000 },
+            { id: 'CH02', name: 'Phúc An Cầu Giấy (HN)', region: 'Miền Bắc', target: 1600000000 },
+            { id: 'CH03', name: 'Phúc An Đống Đa (HN)', region: 'Miền Bắc', target: 1500000000 },
+            { id: 'CH04', name: 'Phúc An Hà Đông (HN)', region: 'Miền Bắc', target: 1250000000 },
+            { id: 'CH05', name: 'Phúc An Long Biên (HN)', region: 'Miền Bắc', target: 1200000000 },
+            { id: 'CH06', name: 'Phúc An Hải Phòng', region: 'Miền Bắc', target: 1400000000 },
+            { id: 'CH07', name: 'Phúc An Quảng Ninh', region: 'Miền Bắc', target: 1300000000 },
+            { id: 'CH08', name: 'Phúc An Đà Nẵng 1', region: 'Miền Trung', target: 1450000000 },
+            { id: 'CH09', name: 'Phúc An Đà Nẵng 2', region: 'Miền Trung', target: 1100000000 },
+            { id: 'CH10', name: 'Phúc An Nha Trang', region: 'Miền Trung', target: 1250000000 },
+            { id: 'CH11', name: 'Phúc An Quận 1 (HCM)', region: 'Miền Nam', target: 2200000000 },
+            { id: 'CH12', name: 'Phúc An Quận 3 (HCM)', region: 'Miền Nam', target: 1750000000 },
+            { id: 'CH13', name: 'Phúc An Quận 7 (HCM)', region: 'Miền Nam', target: 1800000000 },
+            { id: 'CH14', name: 'Phúc An Bình Thạnh (HCM)', region: 'Miền Nam', target: 1550000000 },
+            { id: 'CH15', name: 'Phúc An Tân Bình (HCM)', region: 'Miền Nam', target: 1450000000 },
+            { id: 'CH16', name: 'Phúc An Thủ Đức (HCM)', region: 'Miền Nam', target: 1400000000 },
+            { id: 'CH17', name: 'Phúc An Biên Hòa', region: 'Miền Nam', target: 1200000000 },
+            { id: 'CH18', name: 'Phúc An Cần Thơ', region: 'Miền Nam', target: 1350000000 }
+        ];
+
+        let PRODUCT_CATALOG = {
+            'SKU01': { name: 'Thiết bị Gia dụng Thông minh', category: 'Gia dụng cao cấp', price: 1200000, cost: 720000 },
+            'SKU02': { name: 'Phụ kiện Công nghệ & Âm thanh', category: 'Điện tử tiêu dùng', price: 650000, cost: 420000 },
+            'SKU03': { name: 'Hàng Tiêu dùng Thiết yếu (FMCG)', category: 'Tiêu dùng nhanh', price: 250000, cost: 215000 },
+            'SKU04': { name: 'Combo Khuyến mãi Mùa vụ', category: 'Hàng khuyến mãi', price: 450000, cost: 405000 },
+            'SKU05': { name: 'Sản phẩm Mới Ra Mắt (Q4)', category: 'Hàng mới', price: 950000, cost: null }
+        };
+
+        // Application State
+        let rawTransactions = [];
+        let cleanedTransactions = [];
+        let processedStoreReports = [];
+        let missingCostResolved = false;
+
+        // Utility: Format VNĐ
+        const formatVND = (num) => {
+            if (Math.abs(num) >= 1e9) return (num / 1e9).toFixed(2) + ' Tỷ';
+            if (Math.abs(num) >= 1e6) return (num / 1e6).toFixed(1) + ' Tr';
+            return new Intl.NumberFormat('vi-VN').format(Math.round(num)) + ' ₫';
+        };
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').textContent = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3500);
+        }
+
+        // =========================================================================
+        // 2. BỘ SINH DỮ LIỆU GIẢ LẬP 60.000 DÒNG & TẢI FILE CSV MẪU
+        // =========================================================================
+        function buildDataset(totalRows = 60000) {
+            const data = [];
+            const skus = Object.keys(PRODUCT_CATALOG);
+            let txCounter = 100000;
+            const uniqueLimit = Math.floor(totalRows * 0.97); // 97% gốc, 3% trùng lặp
+
+            for (let i = 0; i < uniqueLimit; i++) {
+                const storeObj = STORES[i % STORES.length];
+                const storeId = storeObj.id;
+
+                const rPeriod = Math.random();
+                let period = '2026-10';
+                if (rPeriod < 0.30) period = '2026-08';
+                else if (rPeriod < 0.65) period = '2026-09';
+
+                let sku = skus[Math.floor(Math.random() * 4)];
+                let qty = Math.floor(Math.random() * 3) + 1;
+                let status = 'Completed';
+
+                // Cài cắm kịch bản thực tế để AI Agent phát hiện
+                if (storeId === 'CH04' || storeId === 'CH15') {
+                    sku = Math.random() < 0.75 ? (Math.random() < 0.5 ? 'SKU03' : 'SKU04') : 'SKU02';
+                    if (period === '2026-10' && Math.random() < 0.16) status = 'Returned';
+                } else if (storeId === 'CH09') {
+                    if (period === '2026-10' && Math.random() < 0.32) continue;
+                    if (Math.random() < 0.08) status = 'Returned';
+                } else if (storeId === 'CH17') {
+                    if (period === '2026-08' && Math.random() < 0.45) continue;
+                    if (period === '2026-10' && Math.random() < 0.22) continue;
+                } else if (i % 450 === 0 && period === '2026-10') {
+                    sku = 'SKU05';
+                } else {
+                    const randStatus = Math.random();
+                    if (randStatus < 0.04) status = 'Cancelled';
+                    else if (randStatus < 0.075) status = 'Returned';
+                }
+
+                if (status === 'Completed' && Math.random() < 0.04) status = 'Cancelled';
+
+                const tx = {
+                    Transaction_ID: 'TX-' + (txCounter++),
+                    Store_ID: storeId,
+                    Period: period,
+                    Product_ID: sku,
+                    Quantity: qty,
+                    Unit_Price: PRODUCT_CATALOG[sku].price,
+                    Status: status
+                };
+                data.push(tx);
+
+                if (data.length < totalRows && i % 32 === 0) {
+                    data.push({ ...tx });
+                }
+            }
+
+            while (data.length < totalRows) {
+                data.push({ ...data[data.length - 1] });
+            }
+            return data;
+        }
+
+        function generateAndRunMockData() {
+            showToast("Đang khởi tạo 60.000 dòng giao dịch & chạy quy trình AI Agent...");
+            missingCostResolved = false;
+            PRODUCT_CATALOG['SKU05'].cost = null;
+            rawTransactions = buildDataset(60000);
+            runAgentPipeline();
+        }
+
+        function downloadSampleCSV() {
+            const sampleData = buildDataset(1000);
+            const headers = ['Transaction_ID', 'Store_ID', 'Period', 'Product_ID', 'Quantity', 'Unit_Price', 'Status'];
+            const csvRows = [
+                headers.join(','),
+                ...sampleData.map(r => `${r.Transaction_ID},${r.Store_ID},${r.Period},${r.Product_ID},${r.Quantity},${r.Unit_Price},${r.Status}`)
+            ];
+            const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'Du_Lieu_Giao_Dich_Mau_PhucAn.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast("Đã tải file CSV mẫu (1.000 dòng có cài lỗi trùng lặp & đơn hủy)!");
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            document.getElementById('fileNameLabel').textContent = file.name;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const lines = e.target.result.split('\n').filter(l => l.trim() !== '');
+                    rawTransactions = [];
+                    for (let i = 1; i < lines.length; i++) {
+                        const cols = lines[i].split(',');
+                        if (cols.length < 6) continue;
+                        rawTransactions.push({
+                            Transaction_ID: cols[0].trim(),
+                            Store_ID: cols[1].trim(),
+                            Period: cols[2].trim(),
+                            Product_ID: cols[3].trim(),
+                            Quantity: parseFloat(cols[4]) || 1,
+                            Unit_Price: parseFloat(cols[5]) || 0,
+                            Status: cols[6] ? cols[6].trim() : 'Completed'
+                        });
+                    }
+                    missingCostResolved = false;
+                    PRODUCT_CATALOG['SKU05'].cost = null;
+                    showToast(`Đã nạp ${rawTransactions.length.toLocaleString()} dòng từ file ${file.name}`);
+                    runAgentPipeline();
+                } catch (err) {
+                    showToast("Lỗi định dạng tệp CSV. Vui lòng kiểm tra lại cấu trúc cột!");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // =========================================================================
+        // 3. QUY TRÌNH MULTI-AGENT & HUMAN-IN-THE-LOOP
+        // =========================================================================
+        function runAgentPipeline() {
+            if (rawTransactions.length === 0) return;
+
+            // AGENT 1: DATA CLEANING & DEDUPLICATION
+            const seenTx = new Set();
+            let duplicateCount = 0;
+            let cancelledCount = 0;
+            let missingCostSkus = new Set();
+
+            cleanedTransactions = [];
+
+            for (let i = 0; i < rawTransactions.length; i++) {
+                const row = rawTransactions[i];
+
+                if (seenTx.has(row.Transaction_ID)) {
+                    duplicateCount++;
+                    continue;
+                }
+                seenTx.add(row.Transaction_ID);
+
+                if (row.Status === 'Cancelled') {
+                    cancelledCount++;
+                    continue;
+                }
+
+                const prod = PRODUCT_CATALOG[row.Product_ID];
+                if (!prod || prod.cost === null || prod.cost === undefined) {
+                    missingCostSkus.add(row.Product_ID);
+                }
+
+                cleanedTransactions.push(row);
+            }
+
+            document.getElementById('agent1Status').innerHTML = '<span class="text-emerald-600 font-bold"><i class="fa-solid fa-check-circle"></i> Hoàn tất</span>';
+            document.getElementById('agent1Logs').innerHTML = `
+                <li>• Tổng đầu vào tiếp nhận: <strong>${rawTransactions.length.toLocaleString()}</strong> dòng.</li>
+                <li class="text-rose-600">• Đã loại bỏ <strong>${duplicateCount.toLocaleString()}</strong> dòng trùng lặp mã giao dịch.</li>
+                <li class="text-amber-600">• Đã lọc bỏ <strong>${cancelledCount.toLocaleString()}</strong> đơn hàng bị hủy.</li>
+                <li class="text-emerald-700 font-medium">• Dữ liệu sạch sẵn sàng tính toán: <strong>${cleanedTransactions.length.toLocaleString()}</strong> dòng.</li>
+            `;
+
+            // HUMAN-IN-THE-LOOP #1: Thiếu giá vốn
+            const hitlContainer = document.getElementById('hitlAlertContainer');
+            const hitlCostAlert = document.getElementById('hitlCostAlert');
+            if (missingCostSkus.size > 0 && !missingCostResolved) {
+                hitlContainer.classList.remove('hidden');
+                hitlCostAlert.classList.remove('hidden');
+                document.getElementById('hitlCostText').innerHTML = `Phát hiện mã sản phẩm <strong>[${Array.from(missingCostSkus).join(', ')}]</strong> chưa có dữ liệu giá vốn trong danh mục. Hệ thống tạm tính giá vốn = 0₫ cho đến khi kế toán xác nhận.`;
+            } else {
+                hitlCostAlert.classList.add('hidden');
+            }
+
+            recalculateWithNewPeriod();
+        }
+
+        function resolveMissingCost() {
+            PRODUCT_CATALOG['SKU05'].cost = 570000;
+            missingCostResolved = true;
+            document.getElementById('hitlCostAlert').classList.add('hidden');
+            showToast("Đã cập nhật giá vốn SKU05 = 570.000₫ và tính toán lại toàn bộ báo cáo!");
+            runAgentPipeline();
+        }
+
+        function recalculateWithNewPeriod() {
+            if (cleanedTransactions.length === 0) return;
+
+            const reportPeriod = document.getElementById('reportPeriod').value;
+            const comparePeriod = document.getElementById('comparePeriod').value;
+
+            // AGENT 2: FINANCIAL CALCULATION ENGINE
+            const storeStats = {};
+            STORES.forEach(s => {
+                storeStats[s.id] = {
+                    ...s,
+                    netRevenue: 0,
+                    grossProfit: 0,
+                    returnValue: 0,
+                    prevRevenue: 0,
+                    productMix: {}
+                };
+            });
+
+            for (let i = 0; i < cleanedTransactions.length; i++) {
+                const tx = cleanedTransactions[i];
+                const st = storeStats[tx.Store_ID];
+                if (!st) continue;
+
+                const prod = PRODUCT_CATALOG[tx.Product_ID] || { category: 'Khác', cost: 0 };
+                const unitCost = prod.cost !== null ? prod.cost : 0;
+                const isReturn = tx.Status === 'Returned';
+                const multiplier = isReturn ? -1 : 1;
+
+                const rev = tx.Quantity * tx.Unit_Price * multiplier;
+                const cogs = tx.Quantity * unitCost * multiplier;
+                const gp = rev - cogs;
+
+                if (tx.Period === reportPeriod) {
+                    st.netRevenue += rev;
+                    st.grossProfit += gp;
+                    if (isReturn) st.returnValue += Math.abs(rev);
+
+                    if (!st.productMix[prod.category]) {
+                        st.productMix[prod.category] = { rev: 0, gp: 0 };
+                    }
+                    st.productMix[prod.category].rev += rev;
+                    st.productMix[prod.category].gp += gp;
+                } else if (tx.Period === comparePeriod) {
+                    st.prevRevenue += rev;
+                }
+            }
+
+            let totalChainRev = 0, totalChainGP = 0, totalChainTarget = 0, totalChainReturn = 0, totalChainGrossSales = 0;
+            let anomalyStores = [];
+
+            processedStoreReports = Object.values(storeStats).map(st => {
+                const targetCompletion = st.target > 0 ? (st.netRevenue / st.target) * 100 : 0;
+                const grossMargin = st.netRevenue > 0 ? (st.grossProfit / st.netRevenue) * 100 : 0;
+                const totalPotentialRev = st.netRevenue + st.returnValue;
+                const returnRate = totalPotentialRev > 0 ? (st.returnValue / totalPotentialRev) * 100 : 0;
+                const growthPct = st.prevRevenue > 0 ? ((st.netRevenue - st.prevRevenue) / st.prevRevenue) * 100 : 0;
+
+                totalChainRev += st.netRevenue;
+                totalChainGP += st.grossProfit;
+                totalChainTarget += st.target;
+                totalChainReturn += st.returnValue;
+                totalChainGrossSales += totalPotentialRev;
+
+                if (Math.abs(growthPct) > 30) {
+                    anomalyStores.push(`${st.id} (${growthPct > 0 ? '+' : ''}${growthPct.toFixed(1)}%)`);
+                }
+
+                // Tính điểm ưu tiên hỗ trợ (Urgency Score)
+                const kpiGapScore = Math.max(0, 100 - targetCompletion) * 1.5;
+                const marginGapScore = Math.max(0, 32 - grossMargin) * 2.2;
+                const returnPenaltyScore = Math.max(0, returnRate - 4) * 3.5;
+                const urgencyScore = kpiGapScore + marginGapScore + returnPenaltyScore;
+
+                let diagnosis = [];
+                if (targetCompletion < 85) diagnosis.push(`Doanh thu hụt mục tiêu ${(100 - targetCompletion).toFixed(1)}%`);
+                if (grossMargin < 24) diagnosis.push(`Biên lãi gộp mỏng (${grossMargin.toFixed(1)}%) do bán nhiều hàng biên lãi thấp`);
+                if (returnRate > 8) diagnosis.push(`Tỷ lệ đổi trả báo động (${returnRate.toFixed(1)}%), ăn mòn doanh thu thuần`);
+                if (diagnosis.length === 0) diagnosis.push("Hoạt động ổn định, cơ cấu sản phẩm cân bằng");
+
+                return {
+                    ...st,
+                    targetCompletion,
+                    grossMargin,
+                    returnRate,
+                    growthPct,
+                    urgencyScore,
+                    diagnosisText: diagnosis.join("; ") + "."
+                };
+            });
+
+            processedStoreReports.sort((a, b) => b.urgencyScore - a.urgencyScore);
+
+            document.getElementById('agent2Status').innerHTML = '<span class="text-emerald-600 font-bold"><i class="fa-solid fa-check-circle"></i> Đã đối soát</span>';
+            document.getElementById('agent2Logs').innerHTML = `
+                <li>• Kỳ báo cáo: <strong>${reportPeriod}</strong> vs Kỳ đối chiếu: <strong>${comparePeriod}</strong>.</li>
+                <li>• Đã khấu trừ đồng bộ <strong>${formatVND(totalChainReturn)}</strong> giá trị hàng đổi trả.</li>
+                <li>• Lợi nhuận gộp toàn chuỗi: <strong>${formatVND(totalChainGP)}</strong>.</li>
+                <li class="text-blue-700 font-medium">• Đã chuẩn hóa 100% công thức trên 18 cửa hàng.</li>
+            `;
+
+            // HUMAN-IN-THE-LOOP #2: Biến động > 30%
+            const hitlContainer = document.getElementById('hitlAlertContainer');
+            const hitlAnomalyAlert = document.getElementById('hitlAnomalyAlert');
+            if (anomalyStores.length > 0) {
+                hitlContainer.classList.remove('hidden');
+                hitlAnomalyAlert.classList.remove('hidden');
+                document.getElementById('hitlAnomalyText').innerHTML = `Các cửa hàng có biến động doanh thu &gt;30% so với kỳ <strong>${comparePeriod}</strong>: <strong>${anomalyStores.join(', ')}</strong>. ${comparePeriod === '2026-08' ? '<span class="underline font-bold">Cảnh báo: Bạn đang chọn kỳ so sánh nền thấp (Tháng 08) dễ tạo tăng trưởng ảo!</span>' : 'Cần xác minh yếu tố vận hành thực tế.'}`;
+            } else {
+                hitlAnomalyAlert.classList.add('hidden');
+            }
+
+            // AGENT 3: BI ANALYTICS & RECOMMENDATION
+            const top3Priority = processedStoreReports.slice(0, 3);
+            document.getElementById('agent3Status').innerHTML = '<span class="text-emerald-600 font-bold"><i class="fa-solid fa-check-circle"></i> Sẵn sàng</span>';
+            document.getElementById('agent3Logs').innerHTML = `
+                <li>• Đã bóc tách cơ cấu nhóm sản phẩm tại từng cửa hàng.</li>
+                <li class="text-purple-700 font-semibold">• Top 3 cần hỗ trợ ngay: <strong>${top3Priority.map(s => s.id).join(', ')}</strong>.</li>
+                <li>• Đã tạo kịch bản hành động chi tiết cho Giám đốc Kinh doanh.</li>
+            `;
+
+            // Render KPIs & Tables
+            document.getElementById('kpiSummarySection').classList.remove('hidden');
+            document.getElementById('workspaceSection').classList.remove('hidden');
+            document.getElementById('exportBtn').disabled = false;
+
+            document.getElementById('kpiTotalRev').textContent = formatVND(totalChainRev);
+            document.getElementById('kpiTotalGP').textContent = formatVND(totalChainGP);
+            document.getElementById('kpiAvgMargin').textContent = `Biên lãi gộp trung bình: ${totalChainRev > 0 ? (totalChainGP / totalChainRev * 100).toFixed(1) : 0}%`;
+            
+            const chainTargetPct = totalChainTarget > 0 ? (totalChainRev / totalChainTarget * 100) : 0;
+            const belowTargetCount = processedStoreReports.filter(s => s.targetCompletion < 100).length;
+            document.getElementById('kpiTargetPct').textContent = chainTargetPct.toFixed(1) + '%';
+            document.getElementById('kpiStoresBelowTarget').textContent = `${belowTargetCount}/18 cửa hàng chưa đạt 100% KPI`;
+
+            document.getElementById('kpiTotalReturn').textContent = formatVND(totalChainReturn);
+            document.getElementById('kpiReturnRate').textContent = `Tỷ lệ trả hàng toàn chuỗi: ${totalChainGrossSales > 0 ? (totalChainReturn / totalChainGrossSales * 100).toFixed(2) : 0}%`;
+
+            renderRecommendations(top3Priority);
+            renderStoresTable(processedStoreReports);
+        }
+
+        function renderRecommendations(top3) {
+            const container = document.getElementById('aiRecommendationsList');
+            container.innerHTML = top3.map((st, idx) => {
+                let actionPlan = "";
+                if (st.returnRate > 10) {
+                    actionPlan = "Kiểm tra ngay quy trình kiểm soát chất lượng (QC) đầu ra và chính sách nhận đổi trả tại quầy; đào tạo lại nhân viên tư vấn đúng nhu cầu.";
+                } else if (st.grossMargin < 24) {
+                    actionPlan = "Điều chỉnh trưng bày, đẩy mạnh bán chéo (cross-sell) nhóm Gia dụng cao cấp (biên lãi 40%) thay vì tập trung vào hàng khuyến mãi biên mỏng.";
+                } else {
+                    actionPlan = "Tăng cường ngân sách marketing địa phương và rà soát tồn kho các mã chủ lực để kéo doanh thu về mức mục tiêu.";
+                }
+
+                return `
+                    <div class="bg-white/10 backdrop-blur-sm border border-white/15 rounded-xl p-3.5 hover:bg-white/15 transition cursor-pointer" onclick="openStoreModal('${st.id}')">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="text-xs font-bold text-amber-300">#${idx + 1} ƯU TIÊN: ${st.id}</span>
+                            <span class="text-[11px] bg-rose-500/30 text-rose-200 px-2 py-0.5 rounded font-semibold">KPI: ${st.targetCompletion.toFixed(1)}%</span>
+                        </div>
+                        <p class="text-xs font-semibold text-white mb-1">${st.name}</p>
+                        <p class="text-[11px] text-slate-300 mb-2"><strong>Vấn đề:</strong> ${st.diagnosisText}</p>
+                        <div class="text-[11px] bg-indigo-950/80 text-indigo-200 p-2 rounded-lg border border-indigo-400/20">
+                            <strong><i class="fa-solid fa-lightbulb text-amber-400 mr-1"></i>Đề xuất:</strong> ${actionPlan}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderStoresTable(data) {
+            const tbody = document.getElementById('storesTableBody');
+            tbody.innerHTML = data.map((st, index) => {
+                let priorityBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">Ổn định</span>`;
+                if (index < 3) {
+                    priorityBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700">Khẩn cấp #${index + 1}</span>`;
+                } else if (index < 7) {
+                    priorityBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">Theo dõi</span>`;
+                }
+
+                const kpiColor = st.targetCompletion >= 100 ? 'text-emerald-600 font-bold' : (st.targetCompletion < 85 ? 'text-rose-600 font-bold' : 'text-slate-700 font-semibold');
+                const marginColor = st.grossMargin < 24 ? 'text-rose-600 font-bold' : 'text-slate-700';
+                const returnColor = st.returnRate > 8 ? 'text-rose-600 font-bold' : 'text-slate-600';
+                const growthColor = st.growthPct >= 0 ? 'text-emerald-600' : 'text-rose-600';
+
+                return `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="py-3 px-3 whitespace-nowrap">${priorityBadge}</td>
+                        <td class="py-3 px-3">
+                            <div class="font-semibold text-slate-800">${st.id} - ${st.name.replace('Phúc An ', '')}</div>
+                            <div class="text-[10px] text-slate-400">${st.region} • Mục tiêu: ${formatVND(st.target)}</div>
+                        </td>
+                        <td class="py-3 px-3 text-right font-semibold text-slate-800 whitespace-nowrap">${formatVND(st.netRevenue)}</td>
+                        <td class="py-3 px-3 text-right whitespace-nowrap ${kpiColor}">${st.targetCompletion.toFixed(1)}%</td>
+                        <td class="py-3 px-3 text-right whitespace-nowrap ${marginColor}">${st.grossMargin.toFixed(1)}%</td>
+                        <td class="py-3 px-3 text-right whitespace-nowrap ${returnColor}">${st.returnRate.toFixed(1)}%</td>
+                        <td class="py-3 px-3 text-right whitespace-nowrap font-medium ${growthColor}">
+                            ${st.growthPct >= 0 ? '+' : ''}${st.growthPct.toFixed(1)}%
+                        </td>
+                        <td class="py-3 px-3 text-center">
+                            <button onclick="openStoreModal('${st.id}')" class="text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-md text-[11px] font-semibold transition">
+                                Phân tích
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterStoreTable() {
+            const q = document.getElementById('storeSearch').value.toLowerCase();
+            const filtered = processedStoreReports.filter(s => 
+                s.id.toLowerCase().includes(q) || s.name.toLowerCase().includes(q) || s.region.toLowerCase().includes(q)
+            );
+            renderStoresTable(filtered);
+        }
+
+        function openStoreModal(storeId) {
+            const st = processedStoreReports.find(s => s.id === storeId);
+            if (!st) return;
+
+            document.getElementById('modalStoreTitle').textContent = `${st.id} - ${st.name}`;
+            document.getElementById('modalStoreSubtitle').textContent = `Khu vực: ${st.region} | Hoàn thành KPI: ${st.targetCompletion.toFixed(1)}%`;
+            document.getElementById('modalRev').textContent = formatVND(st.netRevenue);
+            document.getElementById('modalGP').textContent = `${formatVND(st.grossProfit)} (${st.grossMargin.toFixed(1)}%)`;
+            document.getElementById('modalRet').textContent = `${formatVND(st.returnValue)} (${st.returnRate.toFixed(1)}%)`;
+            document.getElementById('modalDiagnosis').textContent = st.diagnosisText;
+
+            const mixContainer = document.getElementById('modalProductMix');
+            const categories = Object.entries(st.productMix);
+            mixContainer.innerHTML = categories.map(([cat, vals]) => {
+                const pctRev = st.netRevenue > 0 ? (vals.rev / st.netRevenue * 100) : 0;
+                const catMargin = vals.rev > 0 ? (vals.gp / vals.rev * 100) : 0;
+                const barColor = catMargin < 20 ? 'bg-amber-500' : 'bg-indigo-600';
+
+                return `
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="font-medium text-slate-700">${cat}</span>
+                            <span class="text-slate-500">Tỷ trọng DT: <strong>${pctRev.toFixed(1)}%</strong> | Biên lãi: <strong class="${catMargin < 20 ? 'text-rose-600' : 'text-emerald-600'}">${catMargin.toFixed(1)}%</strong></span>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-2">
+                            <div class="${barColor} h-2 rounded-full" style="width: ${Math.min(100, Math.max(0, pctRev))}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            const modal = document.getElementById('storeModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeStoreModal() {
+            const modal = document.getElementById('storeModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function exportCleanReport() {
+            if (processedStoreReports.length === 0) return;
+
+            const headers = ['Muc_Do_Uu_Tien', 'Ma_CH', 'Ten_Cua_Hang', 'Khu_Vuc', 'Muc_Tieu', 'Doanh_Thu_Thuan', 'Loi_Nhuan_Gop', 'Bien_Lai_Gop_%', 'Ty_Le_Hoan_Thanh_KPI_%', 'Gia_Tri_Doi_Tra', 'Ty_Le_Doi_Tra_%', 'Tang_Truong_%', 'Chan_Doan_AI'];
+            const rows = processedStoreReports.map((st, idx) => [
+                idx + 1,
+                st.id,
+                `"${st.name}"`,
+                `"${st.region}"`,
+                st.target,
+                Math.round(st.netRevenue),
+                Math.round(st.grossProfit),
+                st.grossMargin.toFixed(2),
+                st.targetCompletion.toFixed(2),
+                Math.round(st.returnValue),
+                st.returnRate.toFixed(2),
+                st.growthPct.toFixed(2),
+                `"${st.diagnosisText}"`
+            ]);
+
+            const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Bao_Cao_Quan_Tri_PhucAn_${document.getElementById('reportPeriod').value}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast("Đã xuất báo cáo quản trị đối soát thành công!");
+        }
+    </script>
+</body>
+</html>
