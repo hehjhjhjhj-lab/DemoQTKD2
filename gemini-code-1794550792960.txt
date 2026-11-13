@@ -1,0 +1,8 @@
+phuc_an_ai_agent/
+├── data/                   # Thư mục chứa file mẫu (transactions.csv, costs.csv, targets.csv)
+├── app.py                  # Giao diện Web Streamlit + Human-in-the-Loop
+├── agents/
+│   ├── data_cleaner.py     # Agent 1: Làm sạch, lọc đơn hủy, khử trùng lặp
+│   ├── calc_engine.py      # Agent 2: Tính doanh thu thuần, lãi gộp, chuẩn hóa kỳ
+│   └── analyst_agent.py    # Agent 3: AI LLM phân tích cơ cấu & đề xuất hỗ trợ
+└── requirements.txt        # Các thư viện cần cài đặt
